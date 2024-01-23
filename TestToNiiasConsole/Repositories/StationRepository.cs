@@ -23,9 +23,9 @@ namespace TestToNiiasConsole.Repositories
             // Обновляем списки смежности
             StationModel.UpdateAdjacencyList(station);
 
-            Dictionary<Point, double> distances = new Dictionary<Point, double>();
-            Dictionary<Point, Point> previous = new Dictionary<Point, Point>();
-            HashSet<Point> vertices = new HashSet<Point>(station.AdjacencyList.Keys);
+            var distances = new Dictionary<Point, double>();
+            var previous = new Dictionary<Point, Point>();
+            var priorityQueue = new PriorityQueue<Point>();
 
             // Инициализация расстояний и предыдущих вершин
             foreach (var point in station.AdjacencyList.Keys)
@@ -36,15 +36,16 @@ namespace TestToNiiasConsole.Repositories
 
             // Расстояние от начальной точки до самой себя равно 0
             distances[start] = 0;
+            priorityQueue.Enqueue(start, 0);
 
-            while (vertices.Count > 0)
+            while (priorityQueue.Count > 0)
             {
-                var current = vertices.OrderBy(v => distances[v]).First();
-                vertices.Remove(current);
+                var current = priorityQueue.Dequeue();
 
-                if (distances[current] == double.PositiveInfinity)
+                if (current == end)
                 {
-                    break; // Если расстояние до текущей вершины равно бесконечности, значит, не существует пути
+                    // Достигнута конечная точка, завершаем поиск
+                    break;
                 }
 
                 foreach (var neighborSegment in station.AdjacencyList[current])
@@ -56,6 +57,7 @@ namespace TestToNiiasConsole.Repositories
                     {
                         distances[neighborPoint] = alternativeDistance;
                         previous[neighborPoint] = current;
+                        priorityQueue.Enqueue(neighborPoint, alternativeDistance);
                     }
                 }
             }
@@ -64,24 +66,21 @@ namespace TestToNiiasConsole.Repositories
             var pathSegments = new List<Segment>();
             var currentPoint = end;
 
-            while (currentPoint != null)
+            while (currentPoint != null && previous[currentPoint] != null)
             {
-                if (previous[currentPoint] != null)
-                {
-                    var edge = station.AdjacencyList[currentPoint].FirstOrDefault(s => s.EndPoint == previous[currentPoint]);
-                    if (edge != null)
-                    {
-                        pathSegments.Insert(0, edge);
-                    }
-                    else
-                    {
-                        // Не удалось восстановить путь
-                        Console.WriteLine("Путь не существует.");
-                        return null;
-                    }
-                }
+                var edge = station.AdjacencyList[previous[currentPoint]].FirstOrDefault(s => s.EndPoint == currentPoint);
 
-                currentPoint = previous[currentPoint];
+                if (edge != null)
+                {
+                    pathSegments.Insert(0, edge);
+                    currentPoint = previous[currentPoint];
+                }
+                else
+                {
+                    // Не удалось восстановить путь
+                    Console.WriteLine("Путь не существует.");
+                    return null;
+                }
             }
 
             // Вычисление длины маршрута
@@ -90,12 +89,34 @@ namespace TestToNiiasConsole.Repositories
             return new Tuple<Segment[], double>(pathSegments.ToArray(), totalDistance);
         }
 
-            /// <summary>
-            /// Вывод всех вершин, принадлежащих конкретному парку.
-            /// </summary>
-            /// <param name="station"> Станция. </param>
-            /// <param name="parkId"> Идентификатор парка. </param>
-            public void PrintParkVertices(StationModel station, int parkId)
+        public class PriorityQueue<T>
+        {
+            private readonly Queue<(T item, double priority)> queue = new Queue<(T item, double priority)>();
+
+            public int Count => queue.Count;
+
+            public void Enqueue(T item, double priority)
+            {
+                queue.Enqueue((item, priority));
+            }
+
+            public T Dequeue()
+            {
+                if (queue.Count == 0)
+                {
+                    throw new InvalidOperationException("Queue is empty.");
+                }
+
+                return queue.Dequeue().item;
+            }
+        }
+
+        /// <summary>
+        /// Вывод всех вершин, принадлежащих конкретному парку.
+        /// </summary>
+        /// <param name="station"> Станция. </param>
+        /// <param name="parkId"> Идентификатор парка. </param>
+        public void PrintParkVertices(StationModel station, int parkId)
         {
             // Проверяем, что станция не является null
             if (station == null)
