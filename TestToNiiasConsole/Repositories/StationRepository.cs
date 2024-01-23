@@ -5,19 +5,20 @@ using System.Text;
 using System.Threading.Tasks;
 using TestToNiiasConsole.Models;
 using static System.Collections.Specialized.BitVector32;
+using Path = TestToNiiasConsole.Models.Path;
 
 namespace TestToNiiasConsole.Repositories
 {
-    public class StationReposirory
+    public class StationRepository
     {
         /// <summary>
-        /// Метод для поиска кратчайшего пути между двумя точками на станции
+        /// Метод для поиска кратчайшего пути между двумя точками на станции на основе алгоритма Дейкстры.
         /// </summary>
         /// <param name="station"> Станция. </param>
         /// <param name="start"> Начальная точка.</param>
         /// <param name="end"> Конечная точка. </param>
-        /// <returns> Возвращает массив точек кратчайшего маршрута и общую длину. </returns>
-        public static Tuple<Point[], double> FindShortestPath(StationModel station, Point start, Point end)
+        /// <returns> Возвращает список участков кратчайшего маршрута и его общую длину. </returns>
+        public Tuple<Segment[], double> FindShortestPath(StationModel station, Point start, Point end)
         {
             // Обновляем списки смежности
             StationModel.UpdateAdjacencyList(station);
@@ -59,21 +60,18 @@ namespace TestToNiiasConsole.Repositories
                 }
             }
 
-            // Построение массива точек пути от конечной точки к начальной
-            var path = new List<Point>();
+            // Построение массива сегментов пути от конечной точки к начальной
+            var pathSegments = new List<Segment>();
             var currentPoint = end;
 
             while (currentPoint != null)
             {
-                path.Insert(0, currentPoint);
-
-                if (currentPoint != start)
+                if (previous[currentPoint] != null)
                 {
-                    var edge = station.AdjacencyList[currentPoint].FirstOrDefault(s => Math.Abs(distances[currentPoint] - (distances[s.EndPoint] + s.Length)) < double.Epsilon);
-
+                    var edge = station.AdjacencyList[currentPoint].FirstOrDefault(s => s.EndPoint == previous[currentPoint]);
                     if (edge != null)
                     {
-                        currentPoint = edge.StartPoint;
+                        pathSegments.Insert(0, edge);
                     }
                     else
                     {
@@ -82,24 +80,22 @@ namespace TestToNiiasConsole.Repositories
                         return null;
                     }
                 }
-                else
-                {
-                    currentPoint = null;
-                }
+
+                currentPoint = previous[currentPoint];
             }
 
             // Вычисление длины маршрута
             double totalDistance = distances[end];
 
-            return new Tuple<Point[], double>(path.ToArray(), totalDistance);
+            return new Tuple<Segment[], double>(pathSegments.ToArray(), totalDistance);
         }
 
-        /// <summary>
-        /// Вывод всех вершин, принадлежащих конкретному парку.
-        /// </summary>
-        /// <param name="station"></param>
-        /// <param name="parkName"></param>
-        public static void PrintParkVertices(StationModel station, int parkId)
+            /// <summary>
+            /// Вывод всех вершин, принадлежащих конкретному парку.
+            /// </summary>
+            /// <param name="station"> Станция. </param>
+            /// <param name="parkId"> Идентификатор парка. </param>
+            public void PrintParkVertices(StationModel station, int parkId)
         {
             // Проверяем, что станция не является null
             if (station == null)
@@ -138,6 +134,69 @@ namespace TestToNiiasConsole.Repositories
             {
                 Console.WriteLine($"{vertex.Id}, {vertex.Name}");
             }
+        }
+
+        /// <summary>
+        /// Вывод всех участков станции.
+        /// </summary>
+        /// <param name="station"> Станция. </param>
+        public void PrintStationSegments(StationModel station)
+        {
+            if (!station.Segments.Any())
+            {
+                Console.WriteLine("На стации не добавлены участки.");
+            }
+            else
+            {
+                foreach (var segment in station.Segments)
+                {
+                    Console.WriteLine($"Участок {segment.Id}. {segment.Name}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Вывод списка доступных парков на станции.
+        /// </summary>
+        /// <param name="station"> Станция. </param>
+        public void PrintStationParks(StationModel station)
+        {
+            if(!station.Parks.Any())
+            {
+                Console.WriteLine("На станции нет доступных парков.");
+            }
+            else
+            {
+                foreach ( var park in station.Parks)
+                {
+                    Console.WriteLine($"Парк {park.Id}. {park.Name}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Алгоритм заливки парка. Выводит список парков с доступными путями.
+        /// </summary>
+        /// <param name="station"> Станция. </param>
+        public List<Park> FillParks(StationModel station)
+        {
+            List<Park> parksWithPaths = new List<Park>();
+
+            foreach (var park in station.Parks)
+            {
+                Console.WriteLine($"Парк {park.Id} {park.Name}");
+                if (park.Paths.Any())
+                {
+                    parksWithPaths.Add(park);
+                    foreach (var path in park.Paths)
+                    {
+                        Console.Write($"Путь {path.Id} {path.Name} ");
+                    }
+                }
+                Console.WriteLine();
+            }
+
+            return parksWithPaths;
         }
     }
 }
