@@ -44,7 +44,11 @@ while (true)
                 var result = repository.FindShortestPath(station, start, end);
                 if (result != null)
                 {
-                    Console.WriteLine($"Кратчайший путь: {string.Join(" -> ", result.Item1.ToString())}");
+                    Console.WriteLine($"Кратчайший путь: ");
+                    foreach (var segment in result.Item1)
+                    {
+                        Console.WriteLine($"{segment.Id} {segment.Name}");
+                    };
                     Console.WriteLine($"Длина маршрута: {result.Item2}");
                 }
             }
