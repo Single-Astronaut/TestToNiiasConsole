@@ -171,7 +171,7 @@ namespace TestToNiiasConsole.Repositories
             {
                 foreach (var segment in station.Segments)
                 {
-                    Console.WriteLine($"Участок {segment.Id}. {segment.Name}");
+                    Console.WriteLine($"Участок {segment.Id}. {segment.Name} Длина: {segment.Length}");
                 }
             }
         }
